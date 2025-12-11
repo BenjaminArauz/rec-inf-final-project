@@ -13,6 +13,7 @@ from indexing.cleaner import preprocess_text
 from document_filter import DocumentFilter
 from query_processor import compute_query_norm
 from document_ranker import DocumentRanker
+from snippet_extractor import get_snippet_for_term
 
 
 class SearchEngine:
@@ -21,14 +22,16 @@ class SearchEngine:
     Coordinates between filtering, query processing, and ranking modules.
     """
     
-    def __init__(self, index_path):
+    def __init__(self, index_path, corpus_dir):
         """
         Initialize search engine.
         
         Parameters:
         - index_path: path to TF-IDF JSON index file
+        - corpus_dir: path to corpus documents directory
         """
         self.index_path = index_path
+        self.corpus_dir = corpus_dir
         self.index = None
         self.terms = {}
         self.meta = {}
@@ -84,6 +87,36 @@ class SearchEngine:
         query_terms, _ = preprocess_text(query)
         return query_terms
     
+    def get_snippets_for_document(self, doc_id, query_terms):
+        """
+        Get text snippets for each query term found in document.
+        
+        Parameters:
+        - doc_id: str document identifier
+        - query_terms: list of preprocessed query terms
+        
+        Returns:
+        - dict: mapping term -> snippet
+        """
+        snippets = {}
+        for term in set(query_terms):
+            if term in self.terms:
+                # Find this document in term's weights
+                for weight_entry in self.terms[term]['weights']:
+                    if weight_entry['doc'] == doc_id:
+                        positions = weight_entry.get('positions', [])
+                        snippet = get_snippet_for_term(
+                            self.corpus_dir,
+                            doc_id,
+                            positions,
+                            max_words=15
+                        )
+                        if snippet:
+                            snippets[term] = snippet
+                        break
+        
+        return snippets
+    
     def search(self, query, operator='OR'):
         """
         Search for documents matching the query and rank by similarity.
@@ -138,10 +171,9 @@ class SearchEngine:
             print("  No documents found containing query terms.")
             return []
         
-        # Display results
-        print(f"\n  Found {len(ranked_docs)} document(s):")
-        for i, doc_info in enumerate(ranked_docs, 1):
-            print(f"    {i}. Document: {doc_info['doc']}")
-            print(f"       Similarity: {doc_info['score']:.4f}")
+        # Add snippets to each result
+        for doc_info in ranked_docs:
+            doc_id = doc_info['doc']
+            doc_info['snippets'] = self.get_snippets_for_document(doc_id, all_query_terms)
         
         return ranked_docs

@@ -4,9 +4,9 @@ import os
 # Path adjustment
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import TFIDF_JSON_PATH
+from config import TFIDF_JSON_PATH, CORPUS_DATA_DIR
 from search_engine import SearchEngine
-
+    
 
 def display_menu():
     """
@@ -15,12 +15,10 @@ def display_menu():
     Returns:
     - str: 'AND' or 'OR'
     """
-    print("\n" + "=" * 60)
     print("SELECT SEARCH TYPE")
     print("=" * 60)
     print("1. AND Search - Find documents containing ALL terms")
     print("2. OR Search  - Find documents containing AT LEAST ONE term")
-    print("=" * 60)
     
     while True:
         choice = input("\nEnter your choice (1 or 2): ").strip()
@@ -33,29 +31,33 @@ def display_menu():
             print("Invalid choice. Please enter 1 or 2.")
 
 
-def get_search_terms():
+def display_results(results):
     """
-    Prompt user for search terms.
-    
-    Returns:
-    - str: user's search terms
-    """
-    terms = input("\nEnter search terms (space-separated): ").strip()
-    return terms
-
-
-def build_query(search_type, terms):
-    """
-    Build query string (just returns the terms, operator is passed separately).
+    Display search results with snippets.
     
     Parameters:
-    - search_type: 'AND' or 'OR' (not used anymore, kept for compatibility)
-    - terms: str space-separated terms
-    
-    Returns:
-    - str: terms as-is
+    - results: list of result dictionaries with 'doc', 'score', and 'snippets'
     """
-    return terms.strip()
+    if not results:
+        print("\n  No results found.")
+        return
+    
+    print(f"\n{'='*60}")
+    print(f"SEARCH RESULTS ({len(results)} document(s) found)")
+    print(f"{'='*60}\n")
+    
+    for i, result in enumerate(results, 1):
+        print(f"{i}. Document ID: {result['doc']} (weight: {result['score']:.4f}")
+        
+        # Display snippets for each term
+        if result.get('snippets'):
+            print(f"   Text Fragments:")
+            for term, snippet in result['snippets'].items():
+                print(f"     - {snippet}")
+        else:
+            print(f"   No text fragments available.")
+        
+        print()
 
 
 def main():
@@ -67,7 +69,7 @@ def main():
     print("=" * 60)
     
     # Initialize search engine
-    engine = SearchEngine(TFIDF_JSON_PATH)
+    engine = SearchEngine(TFIDF_JSON_PATH, CORPUS_DATA_DIR)
     
     # Load TF-IDF index
     print(f"\nLoading TF-IDF index from: {TFIDF_JSON_PATH}")
@@ -80,7 +82,7 @@ def main():
         print(f"\nSelected: {search_type} search")
         
         # Get search terms
-        terms = get_search_terms()
+        terms = input("\nEnter search terms (space-separated): ").strip()
         
         if not terms:
             print("No search terms provided.")
@@ -90,11 +92,14 @@ def main():
             continue
         
         # Build query
-        query = build_query(search_type, terms)
+        query = terms
         print(f"\nSearch terms: '{query}'")
         
         # Search with operator
         results = engine.search(query, operator=search_type)
+        
+        # Display results with snippets
+        display_results(results)
         
         # Ask if user wants to search again
         print("\n" + "-" * 60)
@@ -103,7 +108,6 @@ def main():
             break
     
     print("\nThank you for using the Document Search System!")
-    print("=" * 60)
 
 
 if __name__ == "__main__":
