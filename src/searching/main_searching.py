@@ -47,13 +47,13 @@ def display_results(results):
     print(f"{'='*60}\n")
     
     for i, result in enumerate(results, 1):
-        print(f"{i}. Document ID: {result['doc']} (weight: {result['score']:.4f}")
+        print(f"{i}. Document ID: {result['doc']} (weight: {result['score']:.4f})")
         
         # Display snippets for each term
         if result.get('snippets'):
             print(f"   Text Fragments:")
             for term, snippet in result['snippets'].items():
-                print(f"     - {snippet}")
+                print(snippet)
         else:
             print(f"   No text fragments available.")
         

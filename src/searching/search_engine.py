@@ -109,7 +109,7 @@ class SearchEngine:
                             self.corpus_dir,
                             doc_id,
                             positions,
-                            max_words=15
+                            fragment_size=15
                         )
                         if snippet:
                             snippets[term] = snippet
