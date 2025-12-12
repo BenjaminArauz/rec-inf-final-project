@@ -4,14 +4,14 @@ Text snippet extraction module for displaying search results.
 import os
 
 
-def extract_snippet(text, term_position, fragment_size=12):
+def extract_snippet(text, term_position, fragment_size):
     """
     Extract a text fragment around a specific character position.
     
     Parameters:
     - text: str full document text
     - term_position: int character position where term starts
-    - fragment_size: int number of words to include in fragment (default: 12)
+    - fragment_size: int number of words to include in fragment
     
     Returns:
     - tuple: (fragment, term_start_in_fragment, term_length) or None
@@ -88,9 +88,10 @@ def highlight_term_in_fragment(fragment, term_start, term_length):
     return before + highlighted_term + after
 
 
-def get_snippet_for_term(corpus_dir, doc_id, term_positions, fragment_size=12):
+def get_snippet_for_term(corpus_dir, doc_id, term_positions, fragment_size=15):
     """
     Get a highlighted text snippet for the first occurrence of a term.
+    Also supports phrase highlighting when the phrase exists verbatim in fragment.
     
     Parameters:
     - corpus_dir: str path to corpus directory
@@ -113,10 +114,7 @@ def get_snippet_for_term(corpus_dir, doc_id, term_positions, fragment_size=12):
         with open(filepath, 'r', encoding='utf-8') as f:
             text = f.read()
         
-        # Use first occurrence
         first_position = term_positions[0]
-        
-        # Extract snippet with term position info
         result = extract_snippet(text, first_position, fragment_size)
         
         if result:

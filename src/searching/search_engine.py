@@ -14,6 +14,7 @@ from document_filter import DocumentFilter
 from query_processor import compute_query_norm
 from document_ranker import DocumentRanker
 from snippet_extractor import get_snippet_for_term
+from phrase_searcher import filter_docs_by_phrase
 
 
 class SearchEngine:
@@ -38,6 +39,7 @@ class SearchEngine:
         self.doc_norms = {}
         self.filter = None
         self.ranker = None
+        self.phrase_occurrences = {}  # Store phrase occurrences for PHRASE searches
     
     def load_index(self):
         """
@@ -61,19 +63,6 @@ class SearchEngine:
         
         return True
     
-    def get_index_info(self):
-        """
-        Get metadata about the loaded index.
-        
-        Returns:
-        - dict: index metadata
-        """
-        return {
-            'total_docs': self.meta.get('total_docs', 0),
-            'total_terms': self.meta.get('total_terms', 0),
-            'index_loaded': self.index is not None
-        }
-    
     def preprocess_query(self, query):
         """
         Apply the same preprocessing to query as was done to documents.
@@ -90,15 +79,29 @@ class SearchEngine:
     def get_snippets_for_document(self, doc_id, query_terms):
         """
         Get text snippets for each query term found in document.
-        
-        Parameters:
-        - doc_id: str document identifier
-        - query_terms: list of preprocessed query terms
-        
-        Returns:
-        - dict: mapping term -> snippet
+        For PHRASE searches, use stored phrase occurrences.
         """
         snippets = {}
+        
+        # If we have phrase occurrences stored (PHRASE search mode), use first occurrence
+        if self.phrase_occurrences and doc_id in self.phrase_occurrences:
+            occurrences = self.phrase_occurrences[doc_id]
+            if occurrences:
+                # Use first occurrence of the phrase
+                start_pos, end_pos = occurrences[0]
+                snippet = get_snippet_for_term(
+                    self.corpus_dir,
+                    doc_id,
+                    [start_pos],
+                    fragment_size=15
+                )
+                if snippet:
+                    # Label as the phrase instead of individual terms
+                    phrase_label = ' '.join(query_terms)
+                    snippets[phrase_label] = snippet
+                return snippets
+        
+        # Regular mode: snippet per term
         for term in set(query_terms):
             if term in self.terms:
                 # Find this document in term's weights
@@ -156,6 +159,14 @@ class SearchEngine:
         if not candidate_docs:
             print("  No documents found matching the criteria.")
             return []
+        
+        # Optional PHRASE operator: keep only docs where the full phrase occurs in order
+        if operator == 'PHRASE' and len(all_query_terms) > 1:
+            candidate_docs, self.phrase_occurrences = filter_docs_by_phrase(self.terms, all_query_terms, candidate_docs)
+            print(f"  Phrase filter: {len(candidate_docs)} documents contain the phrase in order")
+            if not candidate_docs:
+                print("  No documents contain the exact phrase.")
+                return []
         
         # Step 3: Compute query vector norm
         query_norm = compute_query_norm(all_query_terms, self.terms)

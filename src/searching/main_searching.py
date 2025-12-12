@@ -13,22 +13,25 @@ def display_menu():
     Display search type menu and get user selection.
     
     Returns:
-    - str: 'AND' or 'OR'
+    - str: 'AND', 'OR', or 'PHRASE'
     """
     print("SELECT SEARCH TYPE")
     print("=" * 60)
-    print("1. AND Search - Find documents containing ALL terms")
-    print("2. OR Search  - Find documents containing AT LEAST ONE term")
+    print("1. AND Search    - Find documents containing ALL terms")
+    print("2. OR Search     - Find documents containing AT LEAST ONE term")
+    print("3. PHRASE Search - Find documents containing the exact phrase")
     
     while True:
-        choice = input("\nEnter your choice (1 or 2): ").strip()
+        choice = input("\nEnter your choice (1, 2, or 3): ").strip()
         
         if choice == '1':
             return 'AND'
         elif choice == '2':
             return 'OR'
+        elif choice == '3':
+            return 'PHRASE'
         else:
-            print("Invalid choice. Please enter 1 or 2.")
+            print("Invalid choice. Please enter 1, 2, or 3.")
 
 
 def display_results(results):
@@ -51,11 +54,11 @@ def display_results(results):
         
         # Display snippets for each term
         if result.get('snippets'):
-            print(f"   Text Fragments:")
+            print(f"Text Fragments:")
             for term, snippet in result['snippets'].items():
                 print(snippet)
         else:
-            print(f"   No text fragments available.")
+            print(f"No text fragments available.")
         
         print()
 
