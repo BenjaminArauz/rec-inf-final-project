@@ -21,6 +21,7 @@ try:
     CORPUS_DATA_DIR = os.path.join(BASE_DIR, paths_section.get('corpus_dir', 'data/corpus'))
     PROCESSED_DATA_DIR = os.path.join(BASE_DIR, paths_section.get('processed_dir', 'data/processed'))
     TFIDF_JSON_PATH = os.path.join(BASE_DIR, paths_section.get('tfidf_json', 'data/processed/tfidf.json'))
+    REMOTE_INDEX_URL = paths_section.get('remote_index_url', 'https://raw.githubusercontent.com/andres-munoz/RECINF-Project/refs/heads/main/index.html')
 except KeyError as e:
     raise KeyError(f"Missing PATHS configuration key in config.ini: {e}")
 

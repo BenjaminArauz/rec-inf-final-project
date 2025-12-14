@@ -59,71 +59,49 @@ def prev_pos(pos_list, u):
     return prev if prev != float('inf') else float('inf')
 
 
-def next_phrase(terms_dict, query_terms, doc_id, start_v=0):
+def next_phrase(terms_dict, query_terms, doc_id, position):
     """
-    Find the next occurrence of the exact phrase (query_terms in order) in a document.
-    Implements the nextPhrase algorithm from the specification (recursive version).
+    nextPhrase(t1, t2, ..., tn, position)
     
-    Algorithm:
-    1. Forward pass: find next occurrence of each term starting from position start_v
-    2. Backward pass: verify positions are consecutive
-    3. If valid, return (u, v); else recursively search from next position
+    Find the next occurrence of the exact phrase (query_terms in order) in a document.
+    Implements the nextPhrase algorithm exactly as specified in the pseudocode.
     
     Parameters:
     - terms_dict: dict from TF-IDF index with all term data
-    - query_terms: list of terms forming the phrase, in order
+    - query_terms: list of terms forming the phrase [t1, t2, ..., tn]
     - doc_id: str document identifier
-    - start_v: int starting position for search (default: 0)
+    - position: int starting position for search (default: 0)
     
     Returns:
-    - tuple (start_pos, end_pos) if phrase found, None otherwise
-      start_pos: character position where first term starts
-      end_pos: character position where last term starts
+    - tuple (u, v) if phrase found, None otherwise
     """
-    if not query_terms:
-        return None
+    n = len(query_terms)
     
-    # Forward pass: find next occurrence of each term
-    found_positions = []
-    v = start_v
+    v = position
     
-    for t in query_terms:
-        pos_list = positions_for_term_in_doc(terms_dict, t, doc_id)
+    forward_positions = []
+    for i in range(n):
+        pos_list = positions_for_term_in_doc(terms_dict, query_terms[i], doc_id)
         v = next_pos(pos_list, v)
         if v == float('inf'):
-            # No more occurrences of this term, phrase not found
             return None
-        found_positions.append(v)
-        v += 1  # Move past this occurrence for next term search
+        forward_positions.append(v)
     
-    # found_positions = [pos_t1, pos_t2, ..., pos_tn]
-    u = found_positions[0]
-    v = found_positions[-1]
+    u = v
     
-    # Backward pass: verify each term is at the expected position
-    valid = True
-    expected_pos_idx = len(query_terms) - 1
-    check_v = v
-    
-    for t in reversed(query_terms):
-        pos_list = positions_for_term_in_doc(terms_dict, t, doc_id)
-        found_pos = prev_pos(pos_list, check_v)
-        
-        if found_pos != found_positions[expected_pos_idx]:
-            # Position mismatch, phrase is not consecutive
-            valid = False
-            break
-        
-        check_v = found_pos - 1
-        expected_pos_idx -= 1
-    
-    # If positions are consecutive, return the phrase occurrence
-    if valid:
-        return (u, v)
-    else:
-        # Try next occurrence recursively from u + 1
-        return next_phrase(terms_dict, query_terms, doc_id, u + 1)
+    backward_positions = []
+    for i in range(n - 1, -1, -1):
+        pos_list = positions_for_term_in_doc(terms_dict, query_terms[i], doc_id)
+        u = prev_pos(pos_list, u)
+        if u == float('inf'):
+            return None
+        backward_positions.insert(0, u)
 
+    if forward_positions == backward_positions:
+        return (backward_positions[0], backward_positions[-1])
+    else:
+        return next_phrase(terms_dict, query_terms, doc_id, backward_positions[0] + 1)
+    
 
 def all_phrase_occurrences(terms_dict, query_terms, doc_id):
     """
@@ -142,7 +120,7 @@ def all_phrase_occurrences(terms_dict, query_terms, doc_id):
     u = 0
     
     while u != float('inf'):
-        result = next_phrase(terms_dict, query_terms, doc_id, start_v=u)
+        result = next_phrase(terms_dict, query_terms, doc_id, u)
         if result is None:
             break
         

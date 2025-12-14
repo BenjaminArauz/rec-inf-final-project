@@ -127,7 +127,9 @@ class DocumentIndexer:
                         "tfidf": w['tfidf'],
                         "positions": w['positions']
                     } for w in weights
-                ]
+                ],
+                # Sentinel to mark the end of this term's record
+                "end": True
             }
         return {
             "meta": {

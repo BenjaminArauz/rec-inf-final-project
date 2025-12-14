@@ -4,7 +4,8 @@ import os
 # Path adjustment
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import CORPUS_DATA_DIR, TFIDF_JSON_PATH
+from config import CORPUS_DATA_DIR, TFIDF_JSON_PATH, REMOTE_INDEX_URL
+from indexing.corpus_crawler import sync_corpus_from_index
 from indexer import DocumentIndexer
 
 
@@ -16,6 +17,11 @@ def main():
     print("STARTING DOCUMENT INDEXING")
     print("=" * 60)
     
+    # Optional: pre-crawl and sync corpus from remote index
+    print("Syncing corpus from:", REMOTE_INDEX_URL)
+    summary = sync_corpus_from_index(REMOTE_INDEX_URL, CORPUS_DATA_DIR)
+    print(f"Corpus sync: total={summary['total']} downloaded={summary['downloaded']} skipped={summary['skipped']}")
+
     # Initialize indexer and build complete index
     indexer = DocumentIndexer(CORPUS_DATA_DIR)
     tfidf_matrix = indexer.build_index()
