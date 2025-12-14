@@ -29,7 +29,6 @@ except KeyError as e:
 # We convert strings from the .ini to the correct types (int, boolean)
 try:
     MIN_WORD_LENGTH = int(config['NLP']['min_word_length'])
-    CHARS_TO_REMOVE_REGEX = config['NLP']['chars_to_remove_regex']
     LANGUAGE = config['NLP']['language']
 except KeyError as e:
     raise KeyError(f"Missing configuration key in config.ini: {e}")

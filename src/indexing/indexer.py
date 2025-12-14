@@ -34,7 +34,7 @@ class DocumentIndexer:
         files = os.listdir(self.corpus_dir)
         index = 0
         
-        # Step 1: Process all documents and collect TF values
+        # Process all documents and collect TF values
         for filename in files:
             filepath = os.path.join(self.corpus_dir, filename)
             
@@ -44,7 +44,7 @@ class DocumentIndexer:
         
         self.total_docs = index
         
-        # Step 2: Compute TF-IDF matrix
+        # Compute TF-IDF matrix
         self.compute_tfidf()
         
         return self.tfidf_matrix
@@ -128,7 +128,6 @@ class DocumentIndexer:
                         "positions": w['positions']
                     } for w in weights
                 ],
-                # Sentinel to mark the end of this term's record
                 "end": True
             }
         return {

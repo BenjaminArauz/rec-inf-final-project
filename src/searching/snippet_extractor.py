@@ -119,6 +119,8 @@ def get_snippet_for_term(corpus_dir, doc_id, term_positions, fragment_size=15):
         
         if result:
             fragment, term_start, term_length = result
+            print(fragment[term_start:term_start+term_length])
+            print(f"fragment[513]: {fragment[513]}")
             return highlight_term_in_fragment(fragment, term_start, term_length)
         
         return None
