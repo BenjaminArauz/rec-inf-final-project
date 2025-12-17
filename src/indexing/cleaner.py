@@ -6,9 +6,16 @@ from nltk.stem import SnowballStemmer
 from collections import Counter, defaultdict
 import math
 
-
 # Import constants from our new config loader
 from config import MIN_WORD_LENGTH, LANGUAGE
+
+PREPOSITIONS = {
+    'of', 'in', 'to', 'for', 'with', 'on', 'at', 'from', 'by',
+    'about', 'as', 'into', 'like', 'through', 'after',
+    'over', 'between', 'out', 'against', 'during', 'without',
+    'before', 'under', 'around', 'among', 'within', 'along', 'or'
+}
+
 
 def get_nltk_stopwords():
     """
@@ -18,7 +25,7 @@ def get_nltk_stopwords():
     return set(stopwords.words(LANGUAGE))
 
 
-def clean_text(text, stopwords_set):
+def clean_text(text):
     """
     Clean text: remove regex chars and convert to lowercase.
     
@@ -28,51 +35,71 @@ def clean_text(text, stopwords_set):
     Returns:
     - str: cleaned and lowercased text
     """
+    # PUNCTUATION MARKS
     # Remove the punctuation marks
-    text = re.sub(r'[().,¿?¡=#\$\'\"+]', ' ', text)
-    # Remove all the numbers, except those within words
-    text = re.sub(r'\b\d+\b', ' ', text)
-    # Remove slashes not within words
-    text = re.sub(r'(?<!\S)/(?!\S)|(?<!\S)/|/(?!\S)', ' ', text)
-    # Extra: collapse leading or trailing multiple slashes around words (e.g., //enhanc -> enhanc, word// -> word)
-    text = re.sub(r'(?<![A-Za-z])/+', '', text)
-    text = re.sub(r'/+(?![A-Za-z])', '', text)
-    # Hyphen rules: remove leading '-word' and trailing 'word-'
-    text = re.sub(r'(?<![A-Za-z0-9])-(?=[A-Za-z])', '', text)
-    text = re.sub(r'(?<=[A-Za-z])-(?![A-Za-z0-9])', '', text)
-    # Remove hyphen in compounds where the right part is an English stopword (e.g., 'afterglow-of' -> 'afterglow of')
-    def _hyphen_compound(m):
-        left, right = m.group(1), m.group(2)
-        return f"{left} {right}" if right.lower() in stopwords_set else m.group(0)
-    text = re.sub(r'([A-Za-z]+)-([A-Za-z]+)', _hyphen_compound, text)
-    # Normalize whitespace
+    text = re.sub(r'[()\[\]\{\}.,¿?¡=#\$\'\"+<>:;%*]', '', text)
+
+    # NUMBERS
+    text = re.sub(r'\b\d+\b', '', text)
+
+    # SLASH 
+    # Remove multiple slashes
+    text = re.sub(r'/{2,}', '/', text)
+    # Remove slashes at the start or end of words
+    text = re.sub(r'(?<!\S)/|/(?!\S)', '', text)
+
+    # HYPHENS
+    # Remove multiple hyphens
+    text = re.sub(r'-{2,}', '-', text)
+    # Remove hyphens at the start or end of words
+    text = re.sub(r'(?<!\S)-|-(?!\S)', '', text)
+
+    # Remove any leftover slashes
+    text = re.sub(r'(?<!\S)/|/(?!\S)', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
-    return text.lower()
+
+    pattern = r'\b(\w+(?:-\w+)*)-(' + '|'.join(PREPOSITIONS) + r')\b';
+
+    def separate_if_prepositions(match):
+        base_term = match.group(1)
+        preposition = match.group(2)
+
+        base_parts = base_term.split('-')
+        if base_parts[-1].lower() in PREPOSITIONS:
+            return match.group(0)
+        else:
+            return f"{base_term} {preposition}"
+        
+    text = re.sub(pattern, separate_if_prepositions, text, flags=re.IGNORECASE)
+
+    return text
 
 
-def extract_terms_with_positions(text_lower, stopwords_set):
+def extract_terms_with_positions(text_original, text_cleaned, stopwords_set):
     """
-    Extract terms and their character positions from cleaned text.
+    Extract terms and their character positions from original text.
     Filters stopwords, applies min length, and stems terms.
     
     Parameters:
-    - text_lower: cleaned and lowercased text
+    - text_original: original text (lowercased but not cleaned)
+    - text_cleaned: cleaned and lowercased text
+    - stopwords_set: set of stopwords to filter
     
     Returns:
     - tuple: (final_terms, term_positions)
       - final_terms: list of stemmed terms
-      - term_positions: dict mapping term -> [sorted unique positions]
+      - term_positions: dict mapping term -> [sorted unique positions in ORIGINAL text]
     """
     stemmer = SnowballStemmer(LANGUAGE)
-    tokens = word_tokenize(text_lower, language=LANGUAGE)
+    tokens = word_tokenize(text_cleaned, language=LANGUAGE)
     
     final_terms = []
     term_positions = defaultdict(list)
     current_pos = 0
     
     for token in tokens:
-        # Find position of this token in cleaned text
-        token_pos = text_lower.find(token, current_pos)
+        # Find position of this token in ORIGINAL text (case-insensitive)
+        token_pos = text_original.find(token, current_pos)
         
         # Check stopword and min length
         """
@@ -84,7 +111,6 @@ def extract_terms_with_positions(text_lower, stopwords_set):
             term_to_add = stemmer.stem(token)
             final_terms.append(term_to_add)
             term_positions[term_to_add].append(token_pos)
-        
         
         if token_pos >= 0:
             current_pos = token_pos + len(token)
@@ -98,7 +124,7 @@ def extract_terms_with_positions(text_lower, stopwords_set):
 def preprocess_text(text):
     """
     Preprocess text: clean, tokenize, filter, and stem.
-    Always returns terms with their character positions.
+    Always returns terms with their character positions in the ORIGINAL text.
     
     Parameters:
     - text: str to preprocess
@@ -106,11 +132,12 @@ def preprocess_text(text):
     Returns:
     - tuple: (final_terms, term_positions)
       - final_terms: list of stemmed terms
-      - term_positions: dict mapping term -> [sorted unique positions]
+      - term_positions: dict mapping term -> [sorted unique positions in original text]
     """
     stopwords_set = get_nltk_stopwords()
-    text_lower = clean_text(text, stopwords_set)
-    return extract_terms_with_positions(text_lower, stopwords_set)
+    text_original = text.lower()
+    text_cleaned = clean_text(text_original)
+    return extract_terms_with_positions(text_original, text_cleaned, stopwords_set)
 
 
 def compute_tf(text):
@@ -127,6 +154,9 @@ def compute_tf(text):
     """
     # Preprocess always returns terms and positions
     terms, positions = preprocess_text(text)
+
+    #print("Extracted terms:")
+    #print(terms)
     
     # Count occurrences
     term_counts = Counter(terms)

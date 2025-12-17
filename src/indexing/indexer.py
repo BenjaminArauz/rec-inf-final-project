@@ -37,10 +37,13 @@ class DocumentIndexer:
         # Process all documents and collect TF values
         for filename in files:
             filepath = os.path.join(self.corpus_dir, filename)
-            
+            #print(f"filepath: {filepath}")
             if os.path.isfile(filepath):
                 self.process_single_document(filename, filepath)
+                #self.process_single_document("000181637300032", "D:\\Personal\\Cadiz\\REC-INF\\rec-inf-final-project\\data\\corpus\\000181637300032")
                 index += 1
+            
+            #break
         
         self.total_docs = index
         
@@ -62,7 +65,7 @@ class DocumentIndexer:
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Compute TF (always includes character positions)
+        # Compute TF
         tf_data = compute_tf(content)
         
         # Store TF values with positions indexed by document
