@@ -37,10 +37,9 @@ class DocumentIndexer:
         # Process all documents and collect TF values
         for filename in files:
             filepath = os.path.join(self.corpus_dir, filename)
-            #print(f"filepath: {filepath}")
             if os.path.isfile(filepath):
                 self.process_single_document(filename, filepath)
-                #self.process_single_document("000181637300032", "D:\\Personal\\Cadiz\\REC-INF\\rec-inf-final-project\\data\\corpus\\000181637300032")
+                #self.process_single_document("000308095100061", "D:\\Personal\\Cadiz\\REC-INF\\rec-inf-final-project\\data\\corpus\\000308095100061")
                 index += 1
             
             #break
@@ -147,31 +146,4 @@ class DocumentIndexer:
         payload = self.to_serializable()
         save_json(payload, output_path, ensure_ascii=ensure_ascii)
         return output_path
-    
-    def get_results(self):
-        """
-        Get TF-IDF matrix (internal structure).
-        """
-        return self.tfidf_matrix
-    
-    def print_summary(self):
-        """
-        Print a summary of the indexing results.
         
-        Parameters:
-        - sample_size: number of sample terms to display
-        """
-        print("=" * 60)
-        print("INDEXING SUMMARY")
-        print("=" * 60)
-        print(f"Total documents processed: {self.total_docs}")
-        print(f"Total unique terms: {len(self.tfidf_matrix)}")
-
-        for term, data in self.tf_matrix.items():
-            print(f"Term: '{term}' TFs: {data}")
-
-        print("-" * 60)
-        
-        for term, data in self.tfidf_matrix.items():
-            print(f"Term: '{term}' {data}")
-        print("=" * 60)

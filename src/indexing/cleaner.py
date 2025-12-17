@@ -74,7 +74,6 @@ def clean_text(text):
 
     return text
 
-
 def extract_terms_with_positions(text_original, text_cleaned, stopwords_set):
     """
     Extract terms and their character positions from original text.
@@ -91,35 +90,38 @@ def extract_terms_with_positions(text_original, text_cleaned, stopwords_set):
       - term_positions: dict mapping term -> [sorted unique positions in ORIGINAL text]
     """
     stemmer = SnowballStemmer(LANGUAGE)
-    tokens = word_tokenize(text_cleaned, language=LANGUAGE)
+    
+    # Tokenize cleaned text to get the final tokens
+    tokens_cleaned = word_tokenize(text_cleaned, language=LANGUAGE)
     
     final_terms = []
     term_positions = defaultdict(list)
-    current_pos = 0
+    current_search_pos = 0
     
-    for token in tokens:
-        # Find position of this token in ORIGINAL text (case-insensitive)
-        token_pos = text_original.find(token, current_pos)
+    # Process ALL tokens from cleaned text
+    for cleaned_token in tokens_cleaned:
+        # Find this token in the original text
+        # Try exact match first
+        token_pos = text_original.find(cleaned_token, current_search_pos)
         
-        # Check stopword and min length
-        """
-        final_terms.append(token)
-        term_positions[token].append(token_pos)
-        """
+        # If we found a position, advance search; otherwise mark as -1
+        if token_pos >= 0:
+            current_search_pos = token_pos + 1
+        else:
+            token_pos = -1
         
-        if token not in stopwords_set and len(token) >= MIN_WORD_LENGTH:
-            term_to_add = stemmer.stem(token)
+        # Filter only by stopwords and min length
+        if cleaned_token not in stopwords_set and len(cleaned_token) >= MIN_WORD_LENGTH:
+            term_to_add = stemmer.stem(cleaned_token)
             final_terms.append(term_to_add)
             term_positions[term_to_add].append(token_pos)
-        
-        if token_pos >= 0:
-            current_pos = token_pos + len(token)
     
     # Convert lists to sorted unique positions
     positions_dict = {term: sorted(set(pos)) for term, pos in term_positions.items()}
     
     return final_terms, positions_dict
 
+# clean_individual_token removed as per request; matching relies solely on exact finds in original text
 
 def preprocess_text(text):
     """
@@ -154,9 +156,6 @@ def compute_tf(text):
     """
     # Preprocess always returns terms and positions
     terms, positions = preprocess_text(text)
-
-    #print("Extracted terms:")
-    #print(terms)
     
     # Count occurrences
     term_counts = Counter(terms)

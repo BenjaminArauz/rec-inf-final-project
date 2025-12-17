@@ -30,9 +30,6 @@ def main():
     indexer.save_json(TFIDF_JSON_PATH)
     print(f"TF-IDF JSON saved to: {TFIDF_JSON_PATH}")
     
-    # Print summary
-    #indexer.print_summary()
-    
     return tfidf_matrix
 
 

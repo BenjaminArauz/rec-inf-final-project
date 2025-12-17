@@ -17,9 +17,9 @@ def read_doc_text(doc_id: str, corpus_dir: str) -> str:
 
 def main():
     base_dir = get_base_dir()
-    corpus_dir = os.path.join(base_dir, "data", "corpus1")
+    corpus_dir = os.path.join(base_dir, "data", "corpus")
 
-    print("=== Peek text from corpus1 document ===")
+    print("=== Peek text from corpus document ===")
     print(f"Carpeta corpus: {corpus_dir}")
 
     doc_id = input("Ingresa el ID del documento (ej: 1, 000365356800057): ").strip()
