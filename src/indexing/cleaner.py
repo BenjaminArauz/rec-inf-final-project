@@ -37,7 +37,10 @@ def clean_text(text):
     """
     # PUNCTUATION MARKS
     # Remove the punctuation marks
-    text = re.sub(r'[()\[\]\{\}.,¿?¡=#\$\'\"+<>:;%*]', '', text)
+    text = re.sub(r'[\[\]\{\}.,¿?¡#\$\'\"+<>:;%*]', '', text)
+
+    # Remove parentheses
+    text = re.sub(r'[()=]', ' ', text)
 
     # NUMBERS
     text = re.sub(r'\b\d+\b', '', text)

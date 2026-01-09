@@ -13,7 +13,7 @@ from indexing.cleaner import preprocess_text
 from document_filter import DocumentFilter
 from query_processor import compute_query_norm
 from document_ranker import DocumentRanker
-from snippet_extractor import get_snippet_for_term
+from text_extractor import extract_snippet
 from phrase_searcher import filter_docs_by_phrase
 
 
@@ -39,7 +39,6 @@ class SearchEngine:
         self.doc_norms = {}
         self.filter = None
         self.ranker = None
-        self.phrase_occurrences = {}  # Store phrase occurrences for PHRASE searches
     
     def load_index(self):
         """
@@ -76,51 +75,44 @@ class SearchEngine:
         query_terms, _ = preprocess_text(query)
         return query_terms
     
-    def get_snippets_for_document(self, doc_id, query_terms):
+    def is_document_matching(self, doc_id, term):
         """
-        Get text snippets for each query term found in document.
-        For PHRASE searches, use stored phrase occurrences.
+        Check if a document contains a specific term and retrieve positions.
+        Parameters:
+        - doc_id: str document identifier
+        - term: str search term
+        Returns:
+        - tuple: (bool is_found, list positions)
         """
-        snippets = {}
+        if term in self.terms:
+            for doc_info in self.terms[term]['weights']:
+                if doc_info['doc'] == doc_id:
+                    return True, doc_info['positions']
+            
+        return False, []
+
+    def get_positions(self, doc_id, query_terms, original_query):
+        """
+        Extract snippets for a document based on query terms.
         
-        # If we have phrase occurrences stored (PHRASE search mode), use first occurrence
-        if self.phrase_occurrences and doc_id in self.phrase_occurrences:
-            occurrences = self.phrase_occurrences[doc_id]
-            if occurrences:
-                # Use first occurrence of the phrase
-                start_pos, end_pos = occurrences[0]
-                snippet = get_snippet_for_term(
-                    self.corpus_dir,
-                    doc_id,
-                    [start_pos],
-                    fragment_size=15
-                )
-                if snippet:
-                    # Label as the phrase instead of individual terms
-                    phrase_label = ' '.join(query_terms)
-                    snippets[phrase_label] = snippet
-                return snippets
+        Parameters:
+        - doc_id: str document identifier
+        - query_terms: list of str query terms
         
-        # Regular mode: snippet per term
-        for term in set(query_terms):
-            if term in self.terms:
-                # Find this document in term's weights
-                for weight_entry in self.terms[term]['weights']:
-                    if weight_entry['doc'] == doc_id:
-                        positions = weight_entry.get('positions', [])
-                        snippet = get_snippet_for_term(
-                            self.corpus_dir,
-                            doc_id,
-                            positions,
-                            fragment_size=15
-                        )
-                        if snippet:
-                            snippets[term] = snippet
-                        break
-        
+        Returns:
+        - list: snippets for the document
+        """
+        snippets = []
+        for i in range(len(query_terms)):
+            term = query_terms[i]
+            is_found, positions = self.is_document_matching(doc_id, term)
+            if is_found:
+                snippet = extract_snippet(doc_id, positions[0], term, original_query[i])
+                print(snippet)
+                snippets.append(snippet)
         return snippets
-    
-    def search(self, query, operator='OR'):
+
+    def search(self, query, operator):
         """
         Search for documents matching the query and rank by similarity.
         
@@ -132,7 +124,7 @@ class SearchEngine:
         
         Parameters:
         - query: str search terms (space-separated, without operators)
-        - operator: str 'AND' or 'OR' (default: 'OR')
+        - operator: str 'AND', 'OR', 'PHRASE'
         
         Returns:
         - list: ranked documents with similarity scores
@@ -168,15 +160,11 @@ class SearchEngine:
                 print("  No documents contain the exact phrase.")
                 return []
         
-        # Step 3: Compute query vector norm
+        # Compute query vector norm
         query_norm = compute_query_norm(all_query_terms, self.terms)
         
-        # Step 4: Rank documents by cosine similarity
-        ranked_docs = self.ranker.rank_documents(
-            all_query_terms, 
-            query_norm, 
-            candidate_docs
-        )
+        # Rank documents by cosine similarity
+        ranked_docs = self.ranker.rank_documents(all_query_terms, query_norm, candidate_docs)
         
         if not ranked_docs:
             print("  No documents found containing query terms.")
@@ -184,7 +172,6 @@ class SearchEngine:
         
         # Add snippets to each result
         for doc_info in ranked_docs:
-            doc_id = doc_info['doc']
-            doc_info['snippets'] = self.get_snippets_for_document(doc_id, all_query_terms)
-        
+            doc_info['snippets'] = self.get_positions(doc_info['doc'], all_query_terms, query.split())
+            
         return ranked_docs

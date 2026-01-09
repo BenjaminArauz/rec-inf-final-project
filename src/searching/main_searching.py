@@ -55,7 +55,7 @@ def display_results(results):
         # Display snippets for each term
         if result.get('snippets'):
             print(f"Text Fragments:")
-            for term, snippet in result['snippets'].items():
+            for snippet in result['snippets']:
                 print(snippet)
         else:
             print(f"No text fragments available.")
@@ -85,9 +85,9 @@ def main():
         print(f"\nSelected: {search_type} search")
         
         # Get search terms
-        terms = input("\nEnter search terms (space-separated): ").strip()
+        query = input("\nEnter search terms (space-separated): ").strip().lower()
         
-        if not terms:
+        if not query:
             print("No search terms provided.")
             retry = input("\nTry another search? (y/n): ").strip().lower()
             if retry != 'y':
@@ -95,7 +95,6 @@ def main():
             continue
         
         # Build query
-        query = terms
         print(f"\nSearch terms: '{query}'")
         
         # Search with operator

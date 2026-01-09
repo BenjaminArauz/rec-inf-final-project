@@ -39,11 +39,8 @@ class DocumentIndexer:
             filepath = os.path.join(self.corpus_dir, filename)
             if os.path.isfile(filepath):
                 self.process_single_document(filename, filepath)
-                #self.process_single_document("000308095100061", "D:\\Personal\\Cadiz\\REC-INF\\rec-inf-final-project\\data\\corpus\\000308095100061")
                 index += 1
-            
-            #break
-        
+                    
         self.total_docs = index
         
         # Compute TF-IDF matrix

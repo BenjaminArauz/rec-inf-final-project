@@ -2,7 +2,6 @@
 Document ranking module for similarity calculations.
 """
 
-
 class DocumentRanker:
     """
     Ranks documents based on cosine similarity with query.
