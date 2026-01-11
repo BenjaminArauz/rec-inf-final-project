@@ -209,4 +209,5 @@ __marimo__/
 data/corpus/
 data/corpus1/
 config.ini
+data/
 processed

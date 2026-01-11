@@ -12,7 +12,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import MAX_RESULTS
 from indexing.cleaner import preprocess_text
 from document_filter import DocumentFilter
-from query_processor import compute_query_norm
 from document_ranker import DocumentRanker
 from text_extractor import extract_snippet
 from phrase_searcher import filter_docs_by_phrase
@@ -94,24 +93,37 @@ class SearchEngine:
             
         return False, []
 
-    def get_positions(self, doc_id, query_terms, original_query):
+    def get_positions(self, doc_id, query_terms, original_query, operator='AND'):
         """
         Extract snippets for a document based on query terms.
         
         Parameters:
         - doc_id: str document identifier
         - query_terms: list of str query terms
+        - original_query: list of str original query words
+        - operator: str 'AND', 'OR', 'PHRASE' (default 'AND')
         
         Returns:
         - list: snippets for the document
         """
         snippets = []
-        for i in range(len(query_terms)):
-            term = query_terms[i]
+        # For PHRASE operator, treat all terms as a single phrase
+        if operator == 'PHRASE' and len(query_terms) > 1:
+            # Build the full phrase
+            full_phrase = ' '.join(query_terms)
+            term = query_terms[0]  # Use first term to find position
             is_found, positions = self.is_document_matching(doc_id, term)
             if is_found:
-                snippet = extract_snippet(doc_id, positions[0], term, original_query[i])
+                snippet = extract_snippet(doc_id, positions[0], full_phrase, ' '.join(original_query), operator)
                 snippets.append(snippet)
+        else:
+            # For AND/OR, process each term individually
+            for i in range(len(query_terms)):
+                term = query_terms[i]
+                is_found, positions = self.is_document_matching(doc_id, term)
+                if is_found:
+                    snippet = extract_snippet(doc_id, positions[0], term, original_query[i], operator)
+                    snippets.append(snippet)
         return snippets
 
     def search(self, query, operator):
@@ -147,23 +159,21 @@ class SearchEngine:
             return []
         
         # Filter documents based on operator
+        
         candidate_docs = self.filter.filter_documents(all_query_terms, operator)
         print(f"  Filter: {operator} - {len(candidate_docs)} documents matched")
-        
-        if not candidate_docs:
-            print("  No documents found matching the criteria.")
-            return []
-        
+
         # Optional PHRASE operator: keep only docs where the full phrase occurs in order
         if operator == 'PHRASE' and len(all_query_terms) > 1:
             candidate_docs, self.phrase_occurrences = filter_docs_by_phrase(self.terms, all_query_terms, candidate_docs)
             print(f"  Phrase filter: {len(candidate_docs)} documents contain the phrase in order")
-            if not candidate_docs:
-                print("  No documents contain the exact phrase.")
-                return []
+            
+        if not candidate_docs:
+            print("  No documents found matching the criteria.")
+            return []
         
         # Compute query vector norm
-        query_norm = compute_query_norm(all_query_terms, self.terms)
+        query_norm = self.ranker.compute_query_norm(all_query_terms, self.terms)
         
         # Rank documents by cosine similarity
         ranked_docs = self.ranker.rank_documents(all_query_terms, query_norm, candidate_docs)
@@ -177,6 +187,6 @@ class SearchEngine:
         
         # Add snippets to each result
         for doc_info in top_docs:
-            doc_info['snippets'] = self.get_positions(doc_info['doc'], all_query_terms, query.split())
+            doc_info['snippets'] = self.get_positions(doc_info['doc'], all_query_terms, query.split(), operator)
             
         return top_docs

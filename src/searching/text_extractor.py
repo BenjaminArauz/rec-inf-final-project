@@ -28,6 +28,28 @@ def highlight_term(text, term):
     pattern = re.escape(term)
     highlighted = re.sub(pattern, lambda m: f"**{m.group(0)}**", text, flags=re.IGNORECASE)
     return highlighted
+
+
+def highlight_phrase(text, phrase):
+    """
+    Highlight a complete phrase in text by wrapping it with ** markers (markdown bold).
+    Treats the entire phrase as a single unit, case-insensitive matching.
+    
+    Parameters:
+    - text: str, the text to highlight
+    - phrase: str, the complete phrase to highlight (e.g., "hola amigos")
+    
+    Returns:
+    - str: text with phrase highlighted as **phrase**
+    """
+    if not text or not phrase:
+        return text
+    
+    # Escape special regex characters in the phrase
+    pattern = re.escape(phrase)
+    # Replace with highlighted version as a single unit
+    highlighted = re.sub(pattern, lambda m: f"**{m.group(0)}**", text, flags=re.IGNORECASE)
+    return highlighted
     
 def get_snippet_for_term(doc_id, position):
     """
@@ -191,14 +213,16 @@ def get_full_document_text(doc_id):
     except Exception as e:
         raise IOError(f"Error reading document {doc_id}: {str(e)}")
 
-def extract_snippet(doc_id, position, term, searched_term):
+def extract_snippet(doc_id, position, term, searched_term, operator):
     """
     Extract a snippet from the document based on position or term.
     
     Parameters:
     - doc_id: str, document identifier (filename)
     - position: int, character position in the document
-    - term: str, search term
+    - term: str, search term or phrase
+    - searched_term: str, the original searched term(s)
+    - operator: str, 'AND', 'OR', or 'PHRASE'
     
     Returns:
     - str: extracted text fragment (sentence/phrase) containing the position
@@ -208,4 +232,9 @@ def extract_snippet(doc_id, position, term, searched_term):
     else:
         snippet = find_snippet_for_term(doc_id, term)
 
-    return highlight_term(snippet, searched_term)
+    # For PHRASE operator, highlight the complete phrase as a unit
+    if operator == 'PHRASE':
+        return highlight_phrase(snippet, searched_term)
+    else:
+        return highlight_term(snippet, searched_term)
+    

@@ -94,11 +94,8 @@ def main():
                 break
             continue
         
-        # Build query
-        print(f"\nSearch terms: '{query}'")
-        
         # Search with operator
-        results = engine.search(query, operator=search_type)
+        results = engine.search(query, search_type)
         
         # Display results with snippets
         display_results(results)

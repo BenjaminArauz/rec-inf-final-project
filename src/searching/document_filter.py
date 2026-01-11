@@ -88,7 +88,7 @@ class DocumentFilter:
         Returns:
         - set: filtered document IDs
         """
-        if operator == 'AND':
-            return self.filter_and(terms)
-        else:  # OR or default
+        if operator == 'OR':
             return self.filter_or(terms)
+        else:
+            return self.filter_and(terms)
