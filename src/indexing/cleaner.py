@@ -37,13 +37,22 @@ def clean_text(text):
     """
     # PUNCTUATION MARKS
     # Remove the punctuation marks
-    text = re.sub(r'[\[\]\{\}.,¿?¡#\$\'\"+<>:;%*]', '', text)
+    text = re.sub(r'[\[\]\{\}.¿?¡#\$\'\"+<>:;%*\\]', '', text)
+    # Replace commas with spaces inside numeric/hyphen lists in parentheses
+    text = re.sub(r'\(([0-9,\-\s]+)\)', lambda m: f"({m.group(1).replace(',', ' ')})", text)
+    # Replace commas
+    text = re.sub(r',', '', text)
 
     # Remove parentheses
     text = re.sub(r'[()=]', ' ', text)
 
     # NUMBERS
-    text = re.sub(r'\b\d+\b', '', text)
+    # Remove number ranges ONLY if they don't lead to more content
+    text = re.sub(r'(?<![A-Za-z\d-])\b\d+\s*-\s*\d+\b(?![\w-])', '', text)
+    # Remove numbers that are only prefixed/suffixed by a lone hyphen
+    text = re.sub(r'(?<!\S)(?:-\d+|\d+-)(?!\S)', '', text)
+    # Remove standalone numbers but keep digits that are part of hyphenated terms 
+    text = re.sub(r'(?<![\w-])\d+(?![\w-])', '', text)
 
     # SLASH 
     # Remove multiple slashes
@@ -61,14 +70,18 @@ def clean_text(text):
     text = re.sub(r'(?<!\S)/|/(?!\S)', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
 
-    pattern = r'\b(\w+(?:-\w+)*)-(' + '|'.join(PREPOSITIONS) + r')\b';
+    # Split only when the preposition is at the END of the term (not followed by another hyphen-word)
+    pattern = r'\b(\w+(?:-\w+)*)-(' + '|'.join(PREPOSITIONS) + r')(?!-\w)\b';
 
     def separate_if_prepositions(match):
         base_term = match.group(1)
         preposition = match.group(2)
 
         base_parts = base_term.split('-')
-        if base_parts[-1].lower() in PREPOSITIONS:
+        # Only preserve the term if it has multiple parts AND the last part is a preposition
+        # Example: come-from (2 parts, last is preposition) -> preserve
+        # Example: before-or (1 part, last is preposition) -> separate anyway
+        if len(base_parts) > 1 and base_parts[-1].lower() in PREPOSITIONS:
             return match.group(0)
         else:
             return f"{base_term} {preposition}"
@@ -104,7 +117,6 @@ def extract_terms_with_positions(text_original, text_cleaned, stopwords_set):
     # Process ALL tokens from cleaned text
     for cleaned_token in tokens_cleaned:
         # Find this token in the original text
-        # Try exact match first
         token_pos = text_original.find(cleaned_token, current_search_pos)
         
         # If we found a position, advance search; otherwise mark as -1
@@ -123,8 +135,6 @@ def extract_terms_with_positions(text_original, text_cleaned, stopwords_set):
     positions_dict = {term: sorted(set(pos)) for term, pos in term_positions.items()}
     
     return final_terms, positions_dict
-
-# clean_individual_token removed as per request; matching relies solely on exact finds in original text
 
 def preprocess_text(text):
     """

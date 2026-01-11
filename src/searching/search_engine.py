@@ -9,6 +9,7 @@ import sys
 # Path adjustment for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from config import MAX_RESULTS
 from indexing.cleaner import preprocess_text
 from document_filter import DocumentFilter
 from query_processor import compute_query_norm
@@ -23,16 +24,18 @@ class SearchEngine:
     Coordinates between filtering, query processing, and ranking modules.
     """
     
-    def __init__(self, index_path, corpus_dir):
+    def __init__(self, index_path, corpus_dir, max_results=None):
         """
         Initialize search engine.
         
         Parameters:
         - index_path: path to TF-IDF JSON index file
         - corpus_dir: path to corpus documents directory
+        - max_results: int, maximum number of results to return (uses config default if None)
         """
         self.index_path = index_path
         self.corpus_dir = corpus_dir
+        self.max_results = max_results if max_results is not None else MAX_RESULTS
         self.index = None
         self.terms = {}
         self.meta = {}
@@ -108,7 +111,6 @@ class SearchEngine:
             is_found, positions = self.is_document_matching(doc_id, term)
             if is_found:
                 snippet = extract_snippet(doc_id, positions[0], term, original_query[i])
-                print(snippet)
                 snippets.append(snippet)
         return snippets
 
@@ -136,7 +138,7 @@ class SearchEngine:
         print(f"  Search terms: '{query}'")
         print(f"  Operator: {operator}")
         
-        # Step 1: Preprocess query to extract terms
+        # Preprocess query to extract terms
         all_query_terms = self.preprocess_query(query)
         print(f"  Processed terms: {all_query_terms}")
         
@@ -144,7 +146,7 @@ class SearchEngine:
             print("No valid terms in query after preprocessing.")
             return []
         
-        # Step 2: Filter documents based on operator
+        # Filter documents based on operator
         candidate_docs = self.filter.filter_documents(all_query_terms, operator)
         print(f"  Filter: {operator} - {len(candidate_docs)} documents matched")
         
@@ -170,8 +172,11 @@ class SearchEngine:
             print("  No documents found containing query terms.")
             return []
         
+        # Limit results to max_results (top n documents)
+        top_docs = ranked_docs[:self.max_results]
+        
         # Add snippets to each result
-        for doc_info in ranked_docs:
+        for doc_info in top_docs:
             doc_info['snippets'] = self.get_positions(doc_info['doc'], all_query_terms, query.split())
             
-        return ranked_docs
+        return top_docs

@@ -73,16 +73,11 @@ def get_snippet_for_term(doc_id, position):
         
     word_counter = len(text[start_pos:end_pos].split())
     
-    print(f"split: {text[start_pos:end_pos].split()}")
-
     if not ((word_counter <= 15) and (word_counter >= 10)):
-        print(f"Reallocating snippet for doc_id={doc_id} at position={position} with word count={word_counter}")
         # Reallocate positions to get approximately 15 words
         if (position - start_pos) > (end_pos - position):
-            print("Moving start position backward")
             start_pos = reallocate_position(text, end_pos, 15, forward=False, backward=True)
         else:
-            print("Moving end position forward")
             end_pos = reallocate_position(text, start_pos, 15, forward=True, backward=False)
 
     # Extract the snippet

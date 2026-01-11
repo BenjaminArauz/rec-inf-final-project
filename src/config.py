@@ -26,9 +26,14 @@ except KeyError as e:
     raise KeyError(f"Missing PATHS configuration key in config.ini: {e}")
 
 # --- NLP SETTINGS ---
-# We convert strings from the .ini to the correct types (int, boolean)
 try:
     MIN_WORD_LENGTH = int(config['NLP']['min_word_length'])
     LANGUAGE = config['NLP']['language']
 except KeyError as e:
     raise KeyError(f"Missing configuration key in config.ini: {e}")
+
+
+try:
+    MAX_RESULTS = int(config['SEARCH']['max_results'])
+except KeyError as e:
+    raise KeyError(f"Missing SEARCH configuration key in config.ini: {e}")
