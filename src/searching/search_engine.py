@@ -36,7 +36,6 @@ class SearchEngine:
         self.doc_norms = {}
         self.filter = None
         self.ranker = None
-        # Store exact phrase positions found during filtering
         self.phrase_occurrences = {} 
     
     def load_index(self):
@@ -82,22 +81,16 @@ class SearchEngine:
         """
         snippets = []
         
-        # For PHRASE operator, use the EXACT position found by the phrase filter
         if operator == 'PHRASE' and len(query_terms) > 1:
             full_phrase = ' '.join(original_query)
             
-            # Check if we have stored occurrences for this doc from the filtering step
             if doc_id in self.phrase_occurrences and self.phrase_occurrences[doc_id]:
-                # Get the start position of the FIRST valid occurrence of the phrase
-                # occurrences format is list of tuples: [(start, end), (start, end)...]
                 first_occurrence = self.phrase_occurrences[doc_id][0]
                 start_pos = first_occurrence[0]
                 
-                # Extract snippet centered exactly on that position
                 snippet = extract_snippet(doc_id, start_pos, full_phrase, full_phrase, operator)
                 snippets.append(snippet)
             else:
-                # Fallback (should rarely happen if filter logic is correct)
                 term = query_terms[0]
                 is_found, positions = self.is_document_matching(doc_id, term)
                 if is_found:
@@ -105,7 +98,6 @@ class SearchEngine:
                     snippets.append(snippet)
                     
         else:
-            # For AND/OR, process each term individually as before
             for i in range(len(query_terms)):
                 term = query_terms[i]
                 is_found, positions = self.is_document_matching(doc_id, term)
@@ -122,14 +114,12 @@ class SearchEngine:
         if not self.index:
             raise RuntimeError("Index not loaded. Call load_index() first.")
         
-        # Reset phrase occurrences for new search
         self.phrase_occurrences = {}
         
         print(f"\nQuery processing:")
         print(f"  Search terms: '{query}'")
         print(f"  Operator: {operator}")
         
-        # Preprocess query to extract terms
         all_query_terms = self.preprocess_query(query)
         print(f"  Processed terms: {all_query_terms}")
         
@@ -137,13 +127,10 @@ class SearchEngine:
             print("No valid terms in query after preprocessing.")
             return []
         
-        # Filter documents based on operator
         candidate_docs = self.filter.filter_documents(all_query_terms, operator)
         print(f"  Filter: {operator} - {len(candidate_docs)} documents matched")
 
-        # Optional PHRASE operator: keep only docs where the full phrase occurs in order
         if operator == 'PHRASE' and len(all_query_terms) > 1:
-            # This function now returns the docs AND the map of positions
             candidate_docs, self.phrase_occurrences = filter_docs_by_phrase(self.terms, all_query_terms, candidate_docs)
             print(f"  Phrase filter: {len(candidate_docs)} documents contain the phrase in order")
             
@@ -151,20 +138,16 @@ class SearchEngine:
             print("  No documents found matching the criteria.")
             return []
         
-        # Compute query vector norm
         query_norm = self.ranker.compute_query_norm(all_query_terms, self.terms)
         
-        # Rank documents by cosine similarity
         ranked_docs = self.ranker.rank_documents(all_query_terms, query_norm, candidate_docs)
         
         if not ranked_docs:
             print("  No documents found containing query terms.")
             return []
         
-        # Limit results to max_results (top n documents)
         top_docs = ranked_docs[:self.max_results]
         
-        # Add snippets to each result
         for doc_info in top_docs:
             doc_info['snippets'] = self.get_positions(doc_info['doc'], all_query_terms, query.split(), operator)
             

@@ -3,8 +3,6 @@ Phrase search module implementing the nextPhrase algorithm with adjacency check.
 Finds exact phrase occurrences in documents using term position lists.
 """
 
-# Maximum allowed distance between words (in characters)
-# Length of previous word + 1 (space) + TOLERANCE (for punctuation like commas, quotes, etc.)
 ADJACENCY_TOLERANCE = 6  
 
 
@@ -57,12 +55,8 @@ def check_adjacency(positions, query_terms):
         next_pos = positions[i+1]
         term_len = len(query_terms[i])
         
-        # Calculate the gap between the end of word A and start of word B
-        # Expected position for next word is roughly: current_pos + term_len + 1 (space)
         expected_next_min = current_pos + term_len
         
-        # We allow a small tolerance for punctuation (comma, quotes) or double spaces
-        # If the gap is huge (like 100 chars), it's not a phrase.
         distance = next_pos - expected_next_min
         
         if distance > ADJACENCY_TOLERANCE:
@@ -99,19 +93,13 @@ def next_phrase(terms_dict, query_terms, doc_id, position):
             return None
         backward_positions.insert(0, u)
 
-    # CHECK 1: Did we converge on a sequence?
     if forward_positions == backward_positions:
-        # CHECK 2 (NEW): Are the words actually adjacent?
         if check_adjacency(backward_positions, query_terms):
-            # Yes, they are close! It's a match.
             return (backward_positions[0], backward_positions[-1])
         else:
-            # No, they are too far apart (e.g. "high ..... school").
-            # Treat as invalid and continue searching from the next possible position
             return next_phrase(terms_dict, query_terms, doc_id, backward_positions[0] + 1)
             
     else:
-        # Not a consistent sequence, try again
         return next_phrase(terms_dict, query_terms, doc_id, backward_positions[0] + 1)
     
 
@@ -129,7 +117,6 @@ def all_phrase_occurrences(terms_dict, query_terms, doc_id):
         
         start_pos, end_pos = result
         occurrences.append((start_pos, end_pos))
-        # Continue searching from position after this occurrence
         u = end_pos + 1
     
     return occurrences
