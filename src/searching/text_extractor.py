@@ -3,23 +3,24 @@ Text extraction utilities for searching and snippet generation.
 """
 import os
 import re
+import sys
+
+# Path adjustment
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from config import CORPUS_DATA_DIR
 
 # PUNCTUATION MARKS for sentence boundary detection
 PUNCTUATION_MARKS = {'.', ',', ';', ':', '(', ')', '[', ']', '-', '"', '¿', '?', '¡', '!'}
 
+# --- ALTERAÇÃO 1: Definimos o novo tamanho (30 palavras) ---
+SNIPPET_SIZE = 30
+
+
 def highlight_term(text, term):
     """
     Highlight a search term in text by wrapping it with ** markers (markdown bold).
     Case-insensitive matching.
-    
-    Parameters:
-    - text: str, the text to highlight
-    - term: str, the term to highlight
-    
-    Returns:
-    - str: text with term highlighted as **term**
     """
     if not text or not term:
         return text
@@ -34,13 +35,6 @@ def highlight_phrase(text, phrase):
     """
     Highlight a complete phrase in text by wrapping it with ** markers (markdown bold).
     Treats the entire phrase as a single unit, case-insensitive matching.
-    
-    Parameters:
-    - text: str, the text to highlight
-    - phrase: str, the complete phrase to highlight (e.g., "hola amigos")
-    
-    Returns:
-    - str: text with phrase highlighted as **phrase**
     """
     if not text or not phrase:
         return text
@@ -55,13 +49,6 @@ def get_snippet_for_term(doc_id, position):
     """
     Extract a sentence/phrase from a document containing the word at a specific position.
     Finds the nearest punctuation marks (forward and backward) to define sentence boundaries.
-    
-    Parameters:
-    - doc_id: str, document identifier (filename)
-    - position: int, character position in the document
-    
-    Returns:
-    - str: extracted text fragment (sentence/phrase) containing the position
     """
     text = get_full_document_text(doc_id)
     
@@ -95,12 +82,17 @@ def get_snippet_for_term(doc_id, position):
         
     word_counter = len(text[start_pos:end_pos].split())
     
-    if not ((word_counter <= 15) and (word_counter >= 10)):
-        # Reallocate positions to get approximately 15 words
+    # --- ALTERAÇÃO 2: Lógica atualizada para usar SNIPPET_SIZE ---
+    # Define um mínimo aceitável (ex: 60% do tamanho total, ~18 palavras)
+    min_size = int(SNIPPET_SIZE * 0.6)
+    
+    # Verifica se está dentro da margem (entre 18 e 30 palavras)
+    if not ((word_counter <= SNIPPET_SIZE) and (word_counter >= min_size)):
+        # Reallocate positions to get approximately SNIPPET_SIZE words
         if (position - start_pos) > (end_pos - position):
-            start_pos = reallocate_position(text, end_pos, 15, forward=False, backward=True)
+            start_pos = reallocate_position(text, end_pos, SNIPPET_SIZE, forward=False, backward=True)
         else:
-            end_pos = reallocate_position(text, start_pos, 15, forward=True, backward=False)
+            end_pos = reallocate_position(text, start_pos, SNIPPET_SIZE, forward=True, backward=False)
 
     # Extract the snippet
     return extract_text_by_position(doc_id, start_pos, end_pos)
@@ -108,14 +100,6 @@ def get_snippet_for_term(doc_id, position):
 def extract_text_by_position(doc_id, start_pos, end_pos):
     """
     Extract text from a document based on character positions.
-    
-    Parameters:
-    - doc_id: str, document identifier (filename)
-    - start_pos: int, starting character position (0-indexed)
-    - end_pos: int, ending character position (exclusive)
-    
-    Returns:
-    - str: extracted text fragment, or None if document not found
     """
     doc_path = os.path.join(CORPUS_DATA_DIR, doc_id)
     
@@ -145,16 +129,6 @@ def extract_text_by_position(doc_id, start_pos, end_pos):
 def reallocate_position(text, position, num_steps, forward, backward):
     """
     Reallocate position to the nearest word boundary in the specified direction.
-    
-    Parameters:
-    - text: str, the document text
-    - position: int, current character position
-    - num_steps: int, number of word boundaries to move
-    - forward: bool, whether to move forward
-    - backward: bool, whether to move backward
-    
-    Returns:
-    - int: new position at the nearest word boundary
     """
     # Move position forward to the nearest word boundary
     if forward:
@@ -176,13 +150,6 @@ def find_snippet_for_term(doc_id, term):
     """
     Find and extract a snippet from the document containing the specified term.
     Highlights the found term in the result.
-    
-    Parameters:
-    - doc_id: str, document identifier (filename)
-    - term: str, search term
-    
-    Returns:
-    - str: extracted text fragment containing the term with the term highlighted as **term**
     """
     text = get_full_document_text(doc_id)
     position = text.find(term)
@@ -195,12 +162,6 @@ def find_snippet_for_term(doc_id, term):
 def get_full_document_text(doc_id):
     """
     Retrieve the complete text of a document.
-    
-    Parameters:
-    - doc_id: str, document identifier (filename)
-    
-    Returns:
-    - str: complete document text
     """
     doc_path = os.path.join(CORPUS_DATA_DIR, doc_id)
     
@@ -216,16 +177,6 @@ def get_full_document_text(doc_id):
 def extract_snippet(doc_id, position, term, searched_term, operator):
     """
     Extract a snippet from the document based on position or term.
-    
-    Parameters:
-    - doc_id: str, document identifier (filename)
-    - position: int, character position in the document
-    - term: str, search term or phrase
-    - searched_term: str, the original searched term(s)
-    - operator: str, 'AND', 'OR', or 'PHRASE'
-    
-    Returns:
-    - str: extracted text fragment (sentence/phrase) containing the position
     """
     if (position != -1):
         snippet = get_snippet_for_term(doc_id, position)
@@ -233,8 +184,11 @@ def extract_snippet(doc_id, position, term, searched_term, operator):
         snippet = find_snippet_for_term(doc_id, term)
 
     # For PHRASE operator, highlight the complete phrase as a unit
-    if operator == 'PHRASE':
-        return highlight_phrase(snippet, searched_term)
-    else:
-        return highlight_term(snippet, searched_term)
-    
+    if snippet:
+        snippet = snippet.replace('\n', ' ')
+        
+        if operator == 'PHRASE':
+            return highlight_phrase(snippet, searched_term)
+        else:
+            return highlight_term(snippet, searched_term)
+    return ""

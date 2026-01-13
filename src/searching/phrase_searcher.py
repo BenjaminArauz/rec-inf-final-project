@@ -1,20 +1,16 @@
 """
-Phrase search module implementing the nextPhrase algorithm.
+Phrase search module implementing the nextPhrase algorithm with adjacency check.
 Finds exact phrase occurrences in documents using term position lists.
 """
+
+# Maximum allowed distance between words (in characters)
+# Length of previous word + 1 (space) + TOLERANCE (for punctuation like commas, quotes, etc.)
+ADJACENCY_TOLERANCE = 6  
 
 
 def positions_for_term_in_doc(terms_dict, term, doc_id):
     """
     Get sorted positions where a term appears in a document.
-    
-    Parameters:
-    - terms_dict: dict from TF-IDF index with term data
-    - term: str the term to search for
-    - doc_id: str document identifier
-    
-    Returns:
-    - list: sorted character positions or empty list
     """
     for w in terms_dict.get(term, {}).get('weights', []):
         if w['doc'] == doc_id:
@@ -25,13 +21,6 @@ def positions_for_term_in_doc(terms_dict, term, doc_id):
 def next_pos(pos_list, v):
     """
     Find the next position in pos_list that is >= v.
-    
-    Parameters:
-    - pos_list: list of sorted positions
-    - v: int current position
-    
-    Returns:
-    - int next position or float('inf') if not found
     """
     for p in pos_list:
         if p >= v:
@@ -42,13 +31,6 @@ def next_pos(pos_list, v):
 def prev_pos(pos_list, u):
     """
     Find the previous position in pos_list that is <= u.
-    
-    Parameters:
-    - pos_list: list of sorted positions
-    - u: int current position
-    
-    Returns:
-    - int previous position or float('inf') if not found
     """
     prev = float('inf')
     for p in pos_list:
@@ -59,21 +41,41 @@ def prev_pos(pos_list, u):
     return prev if prev != float('inf') else float('inf')
 
 
+def check_adjacency(positions, query_terms):
+    """
+    Verify if the terms in the found positions are actually adjacent.
+    
+    Parameters:
+    - positions: list of integer positions found for the terms
+    - query_terms: list of the terms (strings) to check lengths
+    
+    Returns:
+    - bool: True if terms are adjacent (close enough), False otherwise
+    """
+    for i in range(len(positions) - 1):
+        current_pos = positions[i]
+        next_pos = positions[i+1]
+        term_len = len(query_terms[i])
+        
+        # Calculate the gap between the end of word A and start of word B
+        # Expected position for next word is roughly: current_pos + term_len + 1 (space)
+        expected_next_min = current_pos + term_len
+        
+        # We allow a small tolerance for punctuation (comma, quotes) or double spaces
+        # If the gap is huge (like 100 chars), it's not a phrase.
+        distance = next_pos - expected_next_min
+        
+        if distance > ADJACENCY_TOLERANCE:
+            return False
+            
+    return True
+
+
 def next_phrase(terms_dict, query_terms, doc_id, position):
     """
     nextPhrase(t1, t2, ..., tn, position)
     
-    Find the next occurrence of the exact phrase (query_terms in order) in a document.
-    Implements the nextPhrase algorithm exactly as specified in the pseudocode.
-    
-    Parameters:
-    - terms_dict: dict from TF-IDF index with all term data
-    - query_terms: list of terms forming the phrase [t1, t2, ..., tn]
-    - doc_id: str document identifier
-    - position: int starting position for search (default: 0)
-    
-    Returns:
-    - tuple (u, v) if phrase found, None otherwise
+    Find the next occurrence of the EXACT phrase (adjacent words).
     """
     n = len(query_terms)
     
@@ -97,24 +99,25 @@ def next_phrase(terms_dict, query_terms, doc_id, position):
             return None
         backward_positions.insert(0, u)
 
+    # CHECK 1: Did we converge on a sequence?
     if forward_positions == backward_positions:
-        return (backward_positions[0], backward_positions[-1])
+        # CHECK 2 (NEW): Are the words actually adjacent?
+        if check_adjacency(backward_positions, query_terms):
+            # Yes, they are close! It's a match.
+            return (backward_positions[0], backward_positions[-1])
+        else:
+            # No, they are too far apart (e.g. "high ..... school").
+            # Treat as invalid and continue searching from the next possible position
+            return next_phrase(terms_dict, query_terms, doc_id, backward_positions[0] + 1)
+            
     else:
+        # Not a consistent sequence, try again
         return next_phrase(terms_dict, query_terms, doc_id, backward_positions[0] + 1)
     
 
 def all_phrase_occurrences(terms_dict, query_terms, doc_id):
     """
     Find ALL occurrences of the exact phrase in a document.
-    Implements the outer loop from the specification to find all phrase occurrences.
-    
-    Parameters:
-    - terms_dict: dict from TF-IDF index with all term data
-    - query_terms: list of terms forming the phrase, in order
-    - doc_id: str document identifier
-    
-    Returns:
-    - list: list of tuples (start_pos, end_pos) for each occurrence, or empty list
     """
     occurrences = []
     u = 0
@@ -135,19 +138,8 @@ def all_phrase_occurrences(terms_dict, query_terms, doc_id):
 def filter_docs_by_phrase(terms_dict, query_terms, candidate_docs):
     """
     Filter documents to keep only those containing the exact phrase.
-    Also returns a mapping of doc_id -> list of phrase occurrences.
-    
-    Parameters:
-    - terms_dict: dict from TF-IDF index with all term data
-    - query_terms: list of terms forming the phrase, in order
-    - candidate_docs: set of document IDs to filter
-    
-    Returns:
-    - tuple: (set of doc_ids, dict of doc_id -> list of occurrences)
-      occurrences format: list of (start_pos, end_pos) tuples
     """
     if len(query_terms) <= 1:
-        # Single term or empty, all docs pass
         return candidate_docs, {}
     
     filtered = set()
