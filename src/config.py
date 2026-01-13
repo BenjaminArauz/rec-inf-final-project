@@ -29,6 +29,7 @@ except KeyError as e:
 try:
     MIN_WORD_LENGTH = int(config['NLP']['min_word_length'])
     LANGUAGE = config['NLP']['language']
+    USE_STEMMING = config['NLP'].getboolean('use_stemming', True)
 except KeyError as e:
     raise KeyError(f"Missing configuration key in config.ini: {e}")
 

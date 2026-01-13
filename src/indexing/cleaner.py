@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 import math
 
 # Import constants from our new config loader
-from config import MIN_WORD_LENGTH, LANGUAGE
+from config import MIN_WORD_LENGTH, LANGUAGE, USE_STEMMING
 
 PREPOSITIONS = {
     'of', 'in', 'to', 'for', 'with', 'on', 'at', 'from', 'by',
@@ -127,7 +127,8 @@ def extract_terms_with_positions(text_original, text_cleaned, stopwords_set):
         
         # Filter only by stopwords and min length
         if cleaned_token not in stopwords_set and len(cleaned_token) >= MIN_WORD_LENGTH:
-            term_to_add = stemmer.stem(cleaned_token)
+            # Apply stemming only if configured
+            term_to_add = stemmer.stem(cleaned_token) if USE_STEMMING else cleaned_token
             final_terms.append(term_to_add)
             term_positions[term_to_add].append(token_pos)
     
