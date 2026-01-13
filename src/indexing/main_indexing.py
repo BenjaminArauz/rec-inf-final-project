@@ -4,8 +4,8 @@ import os
 # Path adjustment
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import CORPUS_DATA_DIR, TFIDF_JSON_PATH, REMOTE_INDEX_URL, USE_STEMMING
-from indexing.corpus_crawler import sync_corpus_from_index
+from config import CORPUS_DATA_DIR, TFIDF_JSON_PATH, CRAWLER_START_URL, USE_STEMMING
+from indexing.crawler import WebCrawler
 from indexer import DocumentIndexer
 
 
@@ -18,10 +18,10 @@ def main():
     print("=" * 60)
     
     # Crawl and sync corpus from remote index
-    print("Syncing corpus from:", REMOTE_INDEX_URL)
-    summary = sync_corpus_from_index(REMOTE_INDEX_URL, CORPUS_DATA_DIR)
-    print(f"Corpus sync: total={summary['total']} downloaded={summary['downloaded']} skipped={summary['skipped']}")
-
+    print("Syncing corpus from:", CRAWLER_START_URL)
+    crawler = WebCrawler()
+    crawler.crawl(CRAWLER_START_URL)
+        
     # Show stemming status
     if USE_STEMMING:
         print("Stemming is ENABLED for indexing.")
