@@ -35,10 +35,25 @@ class LinkExtractor:
     """Extracts and validates links from HTML pages"""
     
     def __init__(self, domain_limit):
+        """
+        Initialize LinkExtractor with domain limit.
+
+        Parameters:
+        - domain_limit: bool, whether to limit links to the same domain
+        """
         self.domain_limit = domain_limit
     
     def is_valid_url(self, url, base_url):
-        """Check if URL is valid and within domain limits"""
+        """
+        Validate URL based on scheme and domain limit.
+
+        Parameters:
+        - url: str, URL to validate
+        - base_url: str, base URL for domain comparison
+
+        Returns:
+        - bool: True if valid, False otherwise
+        """
         try:
             parsed = urlparse(url)
             base_parsed = urlparse(base_url)
@@ -54,7 +69,16 @@ class LinkExtractor:
             return False
     
     def extract_links(self, page_url, html):
-        """Extract and normalize all links from HTML"""
+        """
+        Extract and normalize all links from HTML
+
+        Parameters:
+        - page_url: str, URL of the page
+        - html: str, HTML content of the page
+
+        Returns:
+        - list: extracted and normalized URLs
+        """
         links = []
         try:
             soup = BeautifulSoup(html, 'html.parser')
@@ -80,7 +104,15 @@ class LinkExtractor:
         return links
     
     def extract_page_info(self, html):
-        """Extract title and link count from HTML"""
+        """
+        Extract title and link count from HTML
+
+        Parameters:
+        - html: str, HTML content of the page
+
+        Returns:
+        - str: page title
+        """
         try:
             soup = BeautifulSoup(html, 'html.parser')
             title = soup.title.string.strip() if soup.title and soup.title.string else 'Sin título'

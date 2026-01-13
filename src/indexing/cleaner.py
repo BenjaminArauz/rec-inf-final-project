@@ -79,8 +79,6 @@ def clean_text(text):
 
         base_parts = base_term.split('-')
         # Only preserve the term if it has multiple parts AND the last part is a preposition
-        # Example: come-from (2 parts, last is preposition) -> preserve
-        # Example: before-or (1 part, last is preposition) -> separate anyway
         if len(base_parts) > 1 and base_parts[-1].lower() in PREPOSITIONS:
             return match.group(0)
         else:
